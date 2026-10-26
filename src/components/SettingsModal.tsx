@@ -1,5 +1,17 @@
 import React, { useState } from "react";
-import { X, Key, Zap, CheckCircle2, Sliders, Volume2, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  X,
+  Key,
+  Zap,
+  CheckCircle2,
+  Sliders,
+  Volume2,
+  ShieldCheck,
+  Sparkles,
+  Headphones,
+} from "lucide-react";
+import { GeminiVoiceName } from "../types";
+import { playGeminiTTS } from "../utils/geminiTTS";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -7,8 +19,8 @@ interface SettingsModalProps {
   apiKey: string;
   onSaveApiKey: (key: string) => void;
   serverHasKey: boolean;
-  speechRate: number;
-  onChangeSpeechRate: (rate: number) => void;
+  geminiVoice: GeminiVoiceName;
+  onChangeGeminiVoice: (voice: GeminiVoiceName) => void;
   maxDimension: number;
   onChangeMaxDimension: (dim: number) => void;
 }
@@ -19,8 +31,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   apiKey,
   onSaveApiKey,
   serverHasKey,
-  speechRate,
-  onChangeSpeechRate,
+  geminiVoice,
+  onChangeGeminiVoice,
   maxDimension,
   onChangeMaxDimension,
 }) => {
@@ -38,6 +50,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }, 600);
   };
 
+  const voiceOptions: {
+    name: GeminiVoiceName;
+    label: string;
+    desc: string;
+    gender: string;
+  }[] = [
+    {
+      name: "Zephyr",
+      label: "Zephyr (推荐)",
+      desc: "知性温润 • 极度自然美音女声",
+      gender: "女声",
+    },
+    {
+      name: "Puck",
+      label: "Puck",
+      desc: "阳光明亮 • 活力清脆美音男声",
+      gender: "男声",
+    },
+    {
+      name: "Kore",
+      label: "Kore",
+      desc: "轻柔典雅 • 纯正播音范女声",
+      gender: "女声",
+    },
+    {
+      name: "Charon",
+      label: "Charon",
+      desc: "沉稳磁性 • 经典成熟男声",
+      gender: "男声",
+    },
+    {
+      name: "Fenrir",
+      label: "Fenrir",
+      desc: "庄重大气 • 深邃质感男声",
+      gender: "男声",
+    },
+  ];
+
+  const handlePreviewVoice = (voice: GeminiVoiceName) => {
+    playGeminiTTS(
+      "Hello! I am your native reading companion from Google Gemini.",
+      voice,
+      inputVal.trim()
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
@@ -45,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-2">
             <Sliders className="w-4 h-4 text-indigo-600" />
-            <h2 className="font-bold text-slate-800 text-base">系统与极速引擎配置</h2>
+            <h2 className="font-bold text-slate-800 text-base">系统与声音配置</h2>
           </div>
           <button
             onClick={onClose}
@@ -63,89 +121,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-emerald-950 text-xs sm:text-sm">
-                  {serverHasKey ? "服务端 Gemini 3.8 Flash 已就绪" : "自定义 Key 模式"}
+                  {serverHasKey
+                    ? "Gemini 官方原生声音引擎 (24kHz WAV)"
+                    : "自定义 Key 模式"}
                 </p>
                 <p className="text-emerald-700/90 text-xs mt-0.5 leading-relaxed">
-                  {serverHasKey
-                    ? "已自动启用服务器端高速通道，无需额外手动配置即可极速解析。"
-                    : "请填入你的 Gemini API Key，即可开启秒级导读。"}
+                  已接入 Gemini 3.8 Flash-Lite TTS 原生语音模型，享受地道纯正的原著母语发音，告别机械音。
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Speed Optimization Breakdown */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              极速为什么能达到 3~5 秒？
+          {/* Gemini Official Voice Selector */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Headphones className="w-3.5 h-3.5 text-indigo-500" />
+                Gemini 官方原声音色选择
+              </span>
+              <span className="text-[11px] text-indigo-600 font-normal">
+                点击试听
+              </span>
             </label>
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/70 space-y-2 text-xs text-slate-600">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                <span>
-                  <strong>精简结构化 Prompt：</strong>抛弃全文逐字 OCR 生成，只提取核心剧情梗与难词，省去 80% Token 生成时间。
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                <span>
-                  <strong>端侧瞬时压缩：</strong>高分辨率照片在浏览器秒压至 960~1080px，图像传输毫秒级完成。
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                <span>
-                  <strong>低延迟推理 (Thinking Level: LOW)：</strong>直奔主题，消除冗长思考挂起。
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* API Key Configuration */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-indigo-500" />
-              Gemini API Key (可选覆盖)
-            </label>
-            <input
-              type="password"
-              placeholder={serverHasKey ? "留空则默认使用服务端内置 Key" : "在此粘贴 AIzaSy... 格式的 Key"}
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-xs sm:text-sm bg-white font-mono"
-            />
-            <p className="text-[11px] text-slate-400">
-              {serverHasKey
-                ? "系统已默认启用官方环境 Key。如需使用自己的专有 Key 可在此填入并覆盖。"
-                : "Key 仅保存在你的浏览器本地，直接与官方 API 安全通信。"}
-            </p>
-          </div>
-
-          {/* Speech Rate Control */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Volume2 className="w-3.5 h-3.5 text-indigo-500" />
-              英语朗读语速 (Web Speech)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "0.8x (慢速研读)", value: 0.8 },
-                { label: "0.9x (原著自然)", value: 0.9 },
-                { label: "1.0x (常速听力)", value: 1.0 },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => onChangeSpeechRate(item.value)}
-                  className={`py-2 px-1 text-center rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    speechRate === item.value
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+            <div className="space-y-1.5">
+              {voiceOptions.map((v) => (
+                <div
+                  key={v.name}
+                  onClick={() => onChangeGeminiVoice(v.name)}
+                  className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    geminiVoice === v.name
+                      ? "bg-indigo-50/80 border-indigo-500 shadow-2xs"
+                      : "bg-white border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  {item.label}
-                </button>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-slate-900">
+                        {v.label}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                        {v.gender}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">{v.desc}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewVoice(v.name);
+                    }}
+                    className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-indigo-100 text-indigo-600 transition shadow-2xs"
+                    title="试听音色"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -158,7 +191,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "960px (极速 3秒推荐)", value: 960 },
+                { label: "840px (⚡ 1~3秒极速推荐)", value: 840 },
                 { label: "1080px (超高清清晰)", value: 1080 },
               ].map((item) => (
                 <button
@@ -175,6 +208,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* API Key Configuration */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-indigo-500" />
+              Gemini API Key (可选覆盖)
+            </label>
+            <input
+              type="password"
+              placeholder={
+                serverHasKey
+                  ? "留空则默认使用服务端内置 Key"
+                  : "在此粘贴 AIzaSy... 格式的 Key"
+              }
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-xs sm:text-sm bg-white font-mono"
+            />
+            <p className="text-[11px] text-slate-400">
+              {serverHasKey
+                ? "系统已默认接入服务端内置官方 Key，开箱即用。"
+                : "填入 Key 即可开启极速导读与 Gemini 原声音频合成。"}
+            </p>
           </div>
         </div>
 

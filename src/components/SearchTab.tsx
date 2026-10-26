@@ -8,18 +8,26 @@ import {
   Lightbulb,
   Clock,
   Trash2,
+  Headphones,
 } from "lucide-react";
-import { DictResult, HighlightedWord } from "../types";
-import { speakEnglish } from "../utils/speech";
+import { DictResult, GeminiVoiceName } from "../types";
+import { playGeminiTTS } from "../utils/geminiTTS";
 
 interface SearchTabProps {
   onLookup: (word: string, context?: string) => Promise<DictResult | null>;
   isSearching: boolean;
   dictResult: DictResult | null;
   isFavorited: (word: string) => boolean;
-  onToggleFavorite: (item: HighlightedWord) => void;
+  onToggleFavorite: (item: {
+    word: string;
+    phonetic?: string;
+    meaning: string;
+    context?: string;
+    tag?: string;
+  }) => void;
   onShowToast: (msg: string) => void;
-  speechRate: number;
+  geminiVoice: GeminiVoiceName;
+  apiKey: string;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -29,11 +37,13 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   isFavorited,
   onToggleFavorite,
   onShowToast,
-  speechRate,
+  geminiVoice,
+  apiKey,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [contextSentence, setContextSentence] = useState("");
   const [showContextField, setShowContextField] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("recent_novel_searches") || "[]");
@@ -43,15 +53,20 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   });
 
   const popularChips = [
-    "muggle",
-    "old sport",
+    "Womp womp",
+    "Dick move",
+    "hooked her up",
+    "trivia",
+    "reluctantly",
+    "flirted",
+    "habenula",
     "phony",
-    "bloody hell",
-    "craning",
-    "good-for-nothing",
-    "serendipity",
-    "crestfallen",
   ];
+
+  const handleSpeak = (text: string) => {
+    if (!text) return;
+    playGeminiTTS(text, geminiVoice, apiKey, setIsPlayingAudio);
+  };
 
   const handleSearch = async (termToSearch?: string) => {
     const word = (termToSearch || searchTerm).trim();
@@ -60,14 +75,16 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       return;
     }
 
-    // Save recent
-    const updated = [word, ...recentSearches.filter((w) => w.toLowerCase() !== word.toLowerCase())].slice(0, 8);
+    const updated = [
+      word,
+      ...recentSearches.filter((w) => w.toLowerCase() !== word.toLowerCase()),
+    ].slice(0, 8);
     setRecentSearches(updated);
     try {
       localStorage.setItem("recent_novel_searches", JSON.stringify(updated));
     } catch {}
 
-    speakEnglish(word, speechRate);
+    handleSpeak(word);
     await onLookup(word, contextSentence.trim() || undefined);
   };
 
@@ -93,8 +110,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               随手查生词 / 查俚语 / 查人名背景
             </h2>
           </div>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-            秒级释义
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+            <Headphones className="w-3 h-3 text-indigo-500" />
+            Gemini 原声
           </span>
         </div>
 
@@ -108,7 +126,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSearch();
               }}
-              placeholder="输入生词、习语或人物名 (如 old sport, phony)..."
+              placeholder="输入生词、习语或俚语 (如 Womp womp, Dick move)..."
               className="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm bg-white"
             />
             {searchTerm && (
@@ -124,10 +142,14 @@ export const SearchTab: React.FC<SearchTabProps> = ({
 
           <button
             type="button"
-            onClick={() => speakEnglish(searchTerm, speechRate)}
+            onClick={() => handleSpeak(searchTerm)}
             disabled={!searchTerm}
-            className="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 transition cursor-pointer"
-            title="试听发音"
+            className={`p-3 rounded-xl transition cursor-pointer ${
+              isPlayingAudio
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40"
+            }`}
+            title="试听 Gemini 官方原声"
           >
             <Volume2 className="w-5 h-5" />
           </button>
@@ -141,7 +163,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               onClick={() => setShowContextField(true)}
               className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
             >
-              + 添加书中原句 (获得小说语境针对性精析)
+              + 添加书中原句 (获得更接地气的情节笑点解析)
             </button>
           ) : (
             <div className="space-y-1.5 pt-1">
@@ -164,7 +186,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 type="text"
                 value={contextSentence}
                 onChange={(e) => setContextSentence(e.target.value)}
-                placeholder="例如: She spent so much time craning over garden fences..."
+                placeholder="例如: A mutual friend had hooked her up with Pierre..."
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-xs bg-slate-50"
               />
             </div>
@@ -186,7 +208,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           ) : (
             <>
               <Sparkles className="w-4 h-4" />
-              <span>✨ 极速 AI 语境释义 & 发音解析</span>
+              <span>✨ 极速 AI 语境释义 & 原声解析</span>
             </>
           )}
         </button>
@@ -194,7 +216,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         {/* Quick Search Chips */}
         <div className="pt-2 border-t border-slate-100">
           <span className="text-xs text-slate-400 block mb-1.5">
-            💡 原著高频特色生词推荐：
+            💡 原著高频特色口语推荐：
           </span>
           <div className="flex flex-wrap gap-1.5">
             {popularChips.map((chip) => (
@@ -246,7 +268,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3
-                  onClick={() => speakEnglish(dictResult.word, speechRate)}
+                  onClick={() => handleSpeak(dictResult.word)}
                   className="text-xl sm:text-2xl font-bold text-indigo-700 hover:text-indigo-900 cursor-pointer tracking-tight"
                 >
                   {dictResult.word}
@@ -256,17 +278,23 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                     [{dictResult.phonetic}]
                   </span>
                 )}
+                {dictResult.tag && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    {dictResult.tag}
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => speakEnglish(dictResult.word, speechRate)}
-                className="p-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
-                title="朗读"
+                onClick={() => handleSpeak(dictResult.word)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer text-xs font-semibold"
+                title="Gemini 官方原声"
               >
                 <Volume2 className="w-4 h-4" />
+                <span>原声</span>
               </button>
 
               <button
@@ -277,9 +305,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                     phonetic: dictResult.phonetic,
                     meaning: dictResult.meaning,
                     context: dictResult.context,
+                    tag: dictResult.tag,
                   })
                 }
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                   isFavorited(dictResult.word)
                     ? "bg-amber-100 text-amber-800 border border-amber-300"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -307,9 +336,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           {/* Context Quote */}
           {dictResult.context && (
             <div
-              onClick={() => speakEnglish(dictResult.context, speechRate)}
+              onClick={() => handleSpeak(dictResult.context)}
               className="text-xs italic text-slate-600 bg-indigo-50/50 hover:bg-indigo-50 p-3 rounded-xl border-l-3 border-indigo-500 cursor-pointer flex items-start justify-between gap-2 group transition"
-              title="点击朗读例句"
+              title="点击试听 Gemini 原声读音"
             >
               <div className="space-y-0.5">
                 <span className="text-[11px] font-bold text-indigo-700 not-italic uppercase tracking-wider block">

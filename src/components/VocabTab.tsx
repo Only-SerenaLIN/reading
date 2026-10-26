@@ -5,20 +5,19 @@ import {
   Trash2,
   Download,
   Search,
-  BookOpen,
   RotateCw,
-  Sparkles,
-  ChevronRight,
+  Headphones,
 } from "lucide-react";
-import { VocabItem } from "../types";
-import { speakEnglish } from "../utils/speech";
+import { VocabItem, GeminiVoiceName } from "../types";
+import { playGeminiTTS } from "../utils/geminiTTS";
 
 interface VocabTabProps {
   vocabList: VocabItem[];
   onRemoveItem: (id: string) => void;
   onClearAll: () => void;
   onShowToast: (msg: string) => void;
-  speechRate: number;
+  geminiVoice: GeminiVoiceName;
+  apiKey: string;
 }
 
 export const VocabTab: React.FC<VocabTabProps> = ({
@@ -26,7 +25,8 @@ export const VocabTab: React.FC<VocabTabProps> = ({
   onRemoveItem,
   onClearAll,
   onShowToast,
-  speechRate,
+  geminiVoice,
+  apiKey,
 }) => {
   const [filterText, setFilterText] = useState("");
   const [flashcardMode, setFlashcardMode] = useState(false);
@@ -43,16 +43,29 @@ export const VocabTab: React.FC<VocabTabProps> = ({
     setFlippedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleSpeak = (text: string) => {
+    if (!text) return;
+    playGeminiTTS(text, geminiVoice, apiKey);
+  };
+
   const exportCSV = () => {
     if (vocabList.length === 0) {
       onShowToast("生词本为空，无法导出");
       return;
     }
 
-    const headers = ["单词/习语", "国际音标", "小说语境释义与文化梗", "原著原句例句", "收藏日期"];
+    const headers = [
+      "单词/习语",
+      "国际音标",
+      "属性标签",
+      "小说语境释义与文化梗",
+      "原著原句例句",
+      "收藏日期",
+    ];
     const rows = vocabList.map((item) => [
       item.word,
       item.phonetic,
+      item.tag || "",
       item.meaning,
       item.context,
       item.addedAt,
@@ -90,6 +103,10 @@ export const VocabTab: React.FC<VocabTabProps> = ({
                 我的收藏生词本
                 <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
                   {vocabList.length} 词
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                  <Headphones className="w-2.5 h-2.5" />
+                  Gemini 原声
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -190,9 +207,10 @@ export const VocabTab: React.FC<VocabTabProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        speakEnglish(item.word, speechRate);
+                        handleSpeak(item.word);
                       }}
                       className="p-1.5 rounded-lg bg-white/80 hover:bg-white text-indigo-600 transition shadow-2xs"
+                      title="Gemini 原声朗读"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
                     </button>
@@ -200,9 +218,16 @@ export const VocabTab: React.FC<VocabTabProps> = ({
 
                   {!isFlipped ? (
                     <div className="py-4 text-center">
-                      <h4 className="text-xl sm:text-2xl font-bold text-slate-900">
-                        {item.word}
-                      </h4>
+                      <div className="flex items-center justify-center gap-2">
+                        <h4 className="text-xl sm:text-2xl font-bold text-slate-900">
+                          {item.word}
+                        </h4>
+                        {item.tag && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            {item.tag}
+                          </span>
+                        )}
+                      </div>
                       {item.phonetic && (
                         <p className="text-xs font-mono text-slate-500 mt-1">
                           [{item.phonetic}]
@@ -218,9 +243,11 @@ export const VocabTab: React.FC<VocabTabProps> = ({
                         <span className="font-bold text-base text-indigo-900">
                           {item.word}
                         </span>
-                        <span className="text-xs font-mono text-indigo-700">
-                          [{item.phonetic}]
-                        </span>
+                        {item.phonetic && (
+                          <span className="text-xs font-mono text-indigo-700">
+                            [{item.phonetic}]
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-700 leading-relaxed font-sans">
                         {item.meaning}
@@ -251,7 +278,7 @@ export const VocabTab: React.FC<VocabTabProps> = ({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
-                      onClick={() => speakEnglish(item.word, speechRate)}
+                      onClick={() => handleSpeak(item.word)}
                       className="font-bold text-base text-indigo-700 hover:text-indigo-900 cursor-pointer"
                     >
                       {item.word}
@@ -261,15 +288,20 @@ export const VocabTab: React.FC<VocabTabProps> = ({
                         [{item.phonetic}]
                       </span>
                     )}
+                    {item.tag && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {item.tag}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => speakEnglish(item.word, speechRate)}
+                    onClick={() => handleSpeak(item.word)}
                     className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
-                    title="朗读"
+                    title="Gemini 原声朗读"
                   >
                     <Volume2 className="w-4 h-4" />
                   </button>
@@ -295,9 +327,9 @@ export const VocabTab: React.FC<VocabTabProps> = ({
               {/* Context Quote */}
               {item.context && (
                 <div
-                  onClick={() => speakEnglish(item.context, speechRate)}
+                  onClick={() => handleSpeak(item.context)}
                   className="mt-2 text-xs italic text-slate-500 bg-slate-50 hover:bg-slate-100/80 p-2.5 rounded-xl border-l-3 border-indigo-400 cursor-pointer flex items-start justify-between gap-2 group transition"
-                  title="点击朗读原句"
+                  title="点击试听 Gemini 原声例句"
                 >
                   <span className="leading-relaxed font-serif">
                     “{item.context}”

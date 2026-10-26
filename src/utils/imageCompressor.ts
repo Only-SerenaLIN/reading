@@ -15,8 +15,8 @@ export interface CompressionResult {
 
 export async function compressImage(
   file: File,
-  maxDimension = 1080,
-  quality = 0.82
+  maxDimension = 840,
+  quality = 0.78
 ): Promise<CompressionResult> {
   const originalSizeKb = Math.round(file.size / 1024);
 
@@ -88,7 +88,7 @@ export async function compressImage(
 /**
  * Creates an authentic novel page photo simulation on canvas
  */
-export function createSampleBookPage(novelId: "harry_potter" | "gatsby" | "catcher"): {
+export function createSampleBookPage(novelId: "love_hypothesis" | "harry_potter" | "gatsby" | "catcher"): {
   title: string;
   author: string;
   dataUrl: string;
@@ -124,10 +124,32 @@ export function createSampleBookPage(novelId: "harry_potter" | "gatsby" | "catch
   let title = "";
   let author = "";
   let headerText = "";
-  let pageNumber = "7";
+  let pageNumber = "21";
   let lines: { text: string; highlight?: boolean; underline?: boolean }[] = [];
 
-  if (novelId === "harry_potter") {
+  if (novelId === "love_hypothesis") {
+    title = "《假戏真做》居里夫妇与神助攻";
+    author = "Ali Hazelwood";
+    headerText = "CHAPTER THREE • THE HABENULA: DISAPPOINTMENT";
+    pageNumber = "21";
+    lines = [
+      { text: "My favorite piece of Marie Curie trivia is that she got married in a dark", highlight: true },
+      { text: "blue lab dress because it was practical and she could wear it in the lab", highlight: false },
+      { text: "afterward. A Polish physicist mutual friend had hooked her up with Pierre,", underline: true },
+      { text: "and they flirted over beakers of liquid uranium, but she still reluctantly", underline: true },
+      { text: "turned down his initial marriage proposal to return to Poland.", highlight: false },
+      { text: "", highlight: false },
+      { text: "Womp womp.", highlight: true, underline: true },
+      { text: "", highlight: false },
+      { text: "Enter Krakow University, which denied her an academic position simply", underline: true },
+      { text: "because she was a woman. Total dick move, but very classy, and quite", underline: true },
+      { text: "fortunate for modern science, because it drove her right back into Pierre’s", highlight: false },
+      { text: "not-yet-radioactive arms.", highlight: true, underline: true },
+      { text: "", highlight: false },
+      { text: "Now, staring across the crowded biology department hallway, I wondered", highlight: false },
+      { text: "if my own habenula was firing at maximum capacity.", highlight: false },
+    ];
+  } else if (novelId === "harry_potter") {
     title = "《哈利·波特与魔法石》第1章";
     author = "J.K. Rowling";
     headerText = "CHAPTER ONE • THE BOY WHO LIVED";

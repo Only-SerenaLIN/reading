@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { BookOpen, Search, Bookmark, Zap } from "lucide-react";
+import { BookOpen, Search, Bookmark } from "lucide-react";
 import { Header } from "./components/Header";
 import { GuideTab } from "./components/GuideTab";
 import { SearchTab } from "./components/SearchTab";
 import { VocabTab } from "./components/VocabTab";
 import { SettingsModal } from "./components/SettingsModal";
-import { PageGuideResult, HighlightedWord, DictResult, VocabItem } from "./types";
+import { PageGuideResult, DictResult, VocabItem, GeminiVoiceName } from "./types";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"guide" | "search" | "vocab">("guide");
@@ -13,13 +13,13 @@ export default function App() {
 
   // Settings & Status State
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
-  const [speechRate, setSpeechRate] = useState(() => {
-    const saved = localStorage.getItem("novel_speech_rate");
-    return saved ? Number(saved) : 0.88;
+  const [geminiVoice, setGeminiVoice] = useState<GeminiVoiceName>(() => {
+    const saved = localStorage.getItem("novel_gemini_voice") as GeminiVoiceName;
+    return saved || "Zephyr";
   });
   const [maxDimension, setMaxDimension] = useState(() => {
     const saved = localStorage.getItem("novel_compress_dim");
-    return saved ? Number(saved) : 960;
+    return saved ? Number(saved) : 840;
   });
   const [serverStatus, setServerStatus] = useState({
     hasServerKey: true,
@@ -29,7 +29,9 @@ export default function App() {
   // Guide Page State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [guideResult, setGuideResult] = useState<PageGuideResult | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loadedImages, setLoadedImages] = useState<
+    { id: string; dataUrl: string; base64: string; mimeType: string; sizeKb: number }[]
+  >([]);
 
   // Search State
   const [isSearching, setIsSearching] = useState(false);
@@ -94,9 +96,10 @@ export default function App() {
     }
   };
 
-  const handleChangeSpeechRate = (rate: number) => {
-    setSpeechRate(rate);
-    localStorage.setItem("novel_speech_rate", String(rate));
+  const handleChangeGeminiVoice = (voice: GeminiVoiceName) => {
+    setGeminiVoice(voice);
+    localStorage.setItem("novel_gemini_voice", voice);
+    showToast(`已切换为 Gemini ${voice} 原声音色`);
   };
 
   const handleChangeMaxDimension = (dim: number) => {
@@ -110,7 +113,13 @@ export default function App() {
     );
   };
 
-  const handleToggleFavorite = (item: HighlightedWord) => {
+  const handleToggleFavorite = (item: {
+    word: string;
+    phonetic?: string;
+    meaning: string;
+    context?: string;
+    tag?: string;
+  }) => {
     const existingIndex = vocabList.findIndex(
       (v) => v.word.trim().toLowerCase() === item.word.trim().toLowerCase()
     );
@@ -123,6 +132,7 @@ export default function App() {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         word: item.word,
         phonetic: item.phonetic || "",
+        tag: item.tag || "",
         meaning: item.meaning || "",
         context: item.context || "",
         addedAt: new Date().toLocaleDateString("zh-CN"),
@@ -140,8 +150,11 @@ export default function App() {
     setVocabList([]);
   };
 
-  // Analyze page with lightning speed
-  const handleAnalyzePage = async (base64: string, mimeType: string) => {
+  // Analyze 1 or multiple pages with section breakdown & rapid speed
+  const handleAnalyzePages = async (
+    images: { base64: string; mimeType: string }[]
+  ) => {
+    if (!images || images.length === 0) return;
     setIsAnalyzing(true);
     const startTime = Date.now();
 
@@ -157,8 +170,7 @@ export default function App() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          imageBase64: base64,
-          mimeType: mimeType || "image/jpeg",
+          images,
         }),
       });
 
@@ -185,7 +197,10 @@ export default function App() {
   };
 
   // Word lookup
-  const handleLookupWord = async (word: string, context?: string): Promise<DictResult | null> => {
+  const handleLookupWord = async (
+    word: string,
+    context?: string
+  ): Promise<DictResult | null> => {
     setIsSearching(true);
     try {
       const headers: Record<string, string> = {
@@ -232,15 +247,16 @@ export default function App() {
       <main className="max-w-2xl mx-auto px-4 py-4 sm:px-6">
         {activeTab === "guide" && (
           <GuideTab
-            onAnalyze={handleAnalyzePage}
+            onAnalyze={handleAnalyzePages}
             isAnalyzing={isAnalyzing}
             result={guideResult}
-            previewUrl={previewUrl}
-            onSetPreviewUrl={setPreviewUrl}
+            loadedImages={loadedImages}
+            onSetLoadedImages={setLoadedImages}
             isFavorited={isFavorited}
             onToggleFavorite={handleToggleFavorite}
             onShowToast={showToast}
-            speechRate={speechRate}
+            geminiVoice={geminiVoice}
+            apiKey={apiKey}
             maxDimension={maxDimension}
           />
         )}
@@ -253,7 +269,8 @@ export default function App() {
             isFavorited={isFavorited}
             onToggleFavorite={handleToggleFavorite}
             onShowToast={showToast}
-            speechRate={speechRate}
+            geminiVoice={geminiVoice}
+            apiKey={apiKey}
           />
         )}
 
@@ -263,7 +280,8 @@ export default function App() {
             onRemoveItem={handleRemoveVocabItem}
             onClearAll={handleClearVocab}
             onShowToast={showToast}
-            speechRate={speechRate}
+            geminiVoice={geminiVoice}
+            apiKey={apiKey}
           />
         )}
       </main>
@@ -275,8 +293,8 @@ export default function App() {
         apiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
         serverHasKey={serverStatus.hasServerKey}
-        speechRate={speechRate}
-        onChangeSpeechRate={handleChangeSpeechRate}
+        geminiVoice={geminiVoice}
+        onChangeGeminiVoice={handleChangeGeminiVoice}
         maxDimension={maxDimension}
         onChangeMaxDimension={handleChangeMaxDimension}
       />
