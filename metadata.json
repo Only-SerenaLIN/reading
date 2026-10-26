@@ -1,0 +1,6 @@
+{
+  "name": "原著拍照导读 Pro (极速版)",
+  "description": "专为英文原著阅读打造的极速拍照导读工具，智能提炼剧情梗、角色发音与划线生词深度解析，数秒内极速出结果。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
